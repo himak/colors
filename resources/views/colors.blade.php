@@ -149,6 +149,57 @@
             color: #000;
         }
 
+        .wcag-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 0.5rem;
+            font-weight: 700;
+            padding: 2px 4px;
+            border-radius: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        .wcag-aaa {
+            background: #22c55e;
+            color: #000;
+        }
+
+        .wcag-aa {
+            background: #84cc16;
+            color: #000;
+        }
+
+        .wcag-aa-large {
+            background: #facc15;
+            color: #000;
+        }
+
+        .wcag-fail {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .wcag-legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 40px;
+            font-size: 0.8rem;
+            color: #888;
+            flex-wrap: wrap;
+        }
+
+        .wcag-legend-title {
+            font-weight: 600;
+            color: #aaa;
+        }
+
+        .wcag-legend .wcag-badge {
+            position: static;
+        }
+
         .copied-toast {
             position: fixed;
             bottom: 30px;
@@ -350,6 +401,14 @@
             <button class="export-btn" onclick="exportBootstrap()">Export Bootstrap 5</button>
         </div>
 
+        <div class="wcag-legend">
+            <span class="wcag-legend-title">WCAG Kontrast:</span>
+            <span class="wcag-badge wcag-aaa">AAA</span> 7:1+
+            <span class="wcag-badge wcag-aa">AA</span> 4.5:1+
+            <span class="wcag-badge wcag-aa-large">AA+</span> 3:1+ (veľký text)
+            <span class="wcag-badge wcag-fail">FAIL</span> &lt;3:1
+        </div>
+
         <div class="palette-section">
             <div class="palette-title">↑ Svetlejšie (mix s bielou)</div>
             <div class="palette" id="lightPalette"></div>
@@ -459,16 +518,46 @@
             return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
         }
 
-        function createSwatch(hex, name, isBase = false) {
+        function getContrastRatio(l1, l2) {
+            const lighter = Math.max(l1, l2);
+            const darker = Math.min(l1, l2);
+            return (lighter + 0.05) / (darker + 0.05);
+        }
+
+        function getWCAGLevel(contrastRatio) {
+            if (contrastRatio >= 7) {
+                return { level: 'AAA', class: 'wcag-aaa', title: 'WCAG AAA - Vynikajúci kontrast (7:1+)' };
+            } else if (contrastRatio >= 4.5) {
+                return { level: 'AA', class: 'wcag-aa', title: 'WCAG AA - Dobrý kontrast (4.5:1+)' };
+            } else if (contrastRatio >= 3) {
+                return { level: 'AA+', class: 'wcag-aa-large', title: 'WCAG AA pre veľký text (3:1+)' };
+            } else {
+                return { level: 'FAIL', class: 'wcag-fail', title: 'Nedostatočný kontrast' };
+            }
+        }
+
+        function createSwatch(hex, name, isBase = false, contrastAgainst = 'both') {
             const rgb = hexToRgb(hex);
             const luminance = getLuminance(rgb.r, rgb.g, rgb.b);
             const textClass = luminance > 0.4 ? 'dark-text' : 'light-text';
+
+            // WCAG kontrast proti bielej a čiernej
+            const whiteLum = 1;
+            const blackLum = 0;
+            
+            const contrastWhite = getContrastRatio(luminance, whiteLum);
+            const contrastBlack = getContrastRatio(luminance, blackLum);
+            
+            // Vyberieme lepší kontrast
+            const bestContrast = Math.max(contrastWhite, contrastBlack);
+            const wcag = getWCAGLevel(bestContrast);
 
             const swatch = document.createElement('div');
             swatch.className = `swatch ${textClass}`;
             swatch.style.backgroundColor = hex;
             swatch.innerHTML = `
                 ${isBase ? '<span class="base-indicator">Base</span>' : ''}
+                <span class="wcag-badge ${wcag.class}" title="${wcag.title}">${wcag.level}</span>
                 <span class="swatch-label">${name}</span>
                 <span class="swatch-hex">${hex}</span>
             `;
